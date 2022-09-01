@@ -15,13 +15,32 @@
 #include <iomanip>
 #include<vector>
 #include<stack>
+#include <fstream>
+
+//remove 
+#include <chrono>
+#include <thread>
 
 #define CTRL_KEY(k) ((k) & 0x1f)
 
 using namespace std;
 
 
+// enum mode = { "Normal" , "Command" };
 
+enum keybind {
+  ARROW_LEFT = 'a',
+  ARROW_RIGHT = 'd',
+  ARROW_UP = 'w',
+  ARROW_DOWN = 's',
+  HOME = 'h',
+  QUIT = 'q',
+  COLON = ':',
+  ESC = '\x1b',
+  ENTER = 13,
+  BACKSPACE = 127,
+
+};
 //File exp struct 
 struct explorerConfig{
 	int cx,cy;
@@ -29,6 +48,11 @@ struct explorerConfig{
 	int screenrows;
 	int screencols;
 	struct termios org_termios;
+	bool c_mode;
+	char last_key;
+	//flag is set true if shifted from normal to cmd mode 
+	bool mode_shift_flag;
+	string cur_cmd;
 };
 
 
@@ -170,27 +194,9 @@ string epoch_to_local(long epoch) {
         return asctime(oldt);
 }
 
-void setScreen(string *buffer){
-	int i=E.offset+1;
-	stringstream home_row;
-	// entity_row<<"\x1b[K";
-	home_row<<setw(D.max_entity_len+5)<<left<<D.cur_entities[0][0]<<setw(15)<<left<<D.cur_entities[0][1];
-	home_row<<setw(15)<<left<<D.cur_entities[0][2]<<setw(15)<<left<<D.cur_entities[0][3];
-	home_row<<setw(15)<<left<<D.cur_entities[0][4]<<"\r\n";
-	*buffer+=home_row.str();
-	while(i<E.screenrows+E.offset-1){
-	stringstream entity_row;
-	// entity_row<<"\x1b[K";
-	entity_row<<setw(D.max_entity_len+5)<<left<<D.cur_entities[i][0]<<setw(15)<<left<<D.cur_entities[i][1];
-	entity_row<<setw(15)<<left<<D.cur_entities[i][2]<<setw(15)<<left<<D.cur_entities[i][3];
-	entity_row<<setw(15)<<left<<D.cur_entities[i][4]<<"\r\n";
-	i++;
-	*buffer+=entity_row.str();
-	}
-	
-	
-	*buffer+="Normal mode :" + D.dir_loc.top();
-}
+
+
+
 
 void GetDirs(const char* dirname){
 	DIR* dir=opendir(dirname);
@@ -250,6 +256,133 @@ void GetDirs(const char* dirname){
     closedir(dir);
 }
 
+
+
+void setScreen(string *buffer){
+	int i=E.offset+1;
+	stringstream home_row;
+	// entity_row<<"\x1b[K";
+	home_row<<setw(D.max_entity_len+5)<<left<<D.cur_entities[0][0]<<setw(15)<<left<<D.cur_entities[0][1];
+	home_row<<setw(15)<<left<<D.cur_entities[0][2]<<setw(15)<<left<<D.cur_entities[0][3];
+	home_row<<setw(15)<<left<<D.cur_entities[0][4]<<"\r\n";
+	*buffer+=home_row.str();
+	while(i<E.screenrows+E.offset-1){
+	stringstream entity_row;
+	// entity_row<<"\x1b[K";
+	entity_row<<setw(D.max_entity_len+5)<<left<<D.cur_entities[i][0]<<setw(15)<<left<<D.cur_entities[i][1];
+	entity_row<<setw(15)<<left<<D.cur_entities[i][2]<<setw(15)<<left<<D.cur_entities[i][3];
+	entity_row<<setw(15)<<left<<D.cur_entities[i][4]<<"\r\n";
+	i++;
+	*buffer+=entity_row.str();
+	}
+	
+	
+
+
+
+}
+
+void CopyFile(string src_loc, string dst_loc){
+    ifstream  src(src_loc, ios::binary);
+    ofstream  dst(dst_loc,  ios::binary);
+    dst << src.rdbuf();
+
+    struct stat buf;
+    stat(src_loc.c_str(),&buf);
+    int result =chmod(dst_loc.c_str(), buf.st_mode);
+}
+
+void execCommand(){
+	string cmd = E.cur_cmd;
+	int len = cmd.size();
+	//TODO check why first charecter is garbage
+	//need to check if refresh is working if copied in the same dir
+	if(cmd.substr(0,4)=="copy"){
+		// string files = cmd.substr(4);
+		//copy
+		vector<string> loc_details;
+		string file;
+		string dest_dir,dest_loc,src_loc;
+		stringstream ss(cmd.substr(5));
+		while (getline(ss, file, ' ')){
+			loc_details.push_back(file);
+		}
+		dest_dir=loc_details[loc_details.size()-1];
+		loc_details.pop_back();
+		for(string file:loc_details){
+			src_loc = D.dir_loc.top()+"/"+file;
+			dest_loc=dest_dir+"/"+file;
+			// write(STDOUT_FILENO, dest_loc.c_str(), dest_loc.size());
+			// std::this_thread::sleep_for(std::chrono::milliseconds(5000)); 
+			// write(STDOUT_FILENO, dest_loc.c_str(), dest_loc.size());
+			// std::this_thread::sleep_for(std::chrono::milliseconds(5000)); 
+			CopyFile(src_loc,dest_loc);
+		}
+		// write(STDOUT_FILENO, files.c_str(), files.size());
+		// std::this_thread::sleep_for(std::chrono::milliseconds(5000)); 
+
+		
+		
+	}
+	else if(cmd.substr(0,4)=="move"){
+		//copy
+	}
+	else if(cmd.substr(0,6)=="rename"){
+		//copy
+	}
+	else if(cmd.substr(0,11)=="create_file"){
+		//copy
+	}
+	else if(cmd.substr(0,11)=="delete_file"){
+		//copy
+	}
+
+	E.cur_cmd="";
+	
+
+}
+
+
+void setScreenFooter(string *buffer){
+	string cur_mode = E.c_mode ? "Command mode:":"Normal Mode:";
+	if (!E.c_mode)
+		*buffer+= cur_mode + D.dir_loc.top();
+	else{
+			if (E.last_key!=ENTER){
+				if(E.last_key==BACKSPACE){
+					if(!E.cur_cmd.empty())
+						E.cur_cmd.pop_back();
+				}
+				else if(!E.mode_shift_flag){
+					E.cur_cmd+=E.last_key;
+					string cmd = E.cur_cmd;
+					int len = cmd.size();
+
+					//TODO check why first charecter is garbage
+					// write(STDOUT_FILENO, to_string(len).c_str(), 10);
+					// write(STDOUT_FILENO, cmd.c_str(), 10);
+					// std::this_thread::sleep_for(std::chrono::milliseconds(5000)); 
+				}
+					
+				else if (E.mode_shift_flag){
+					E.cur_cmd="";
+					E.mode_shift_flag=false;
+				}
+			
+
+			}
+			else{
+				// E.cur_cmd+=E.last_key;
+				execCommand();
+				E.cur_cmd="";
+				// execCommand();
+			}
+			*buffer+= cur_mode + E.cur_cmd;	
+			
+		}
+
+	}
+
 void RefreshScreen(){
 	//string to store refresh screen
 	//Check for refreshing the line by line method
@@ -269,6 +402,8 @@ void RefreshScreen(){
 	
 	GetDirs(loc);
 	setScreen(&refreshScreenBuffer);
+	setScreenFooter(&refreshScreenBuffer);
+	
 
 	// setting the cursor position
 	stringstream cursor_pos;
@@ -303,187 +438,180 @@ char ReadKey(){
 		}
 		
 	}
-	// int status;
-	// int key[3] ={-1,-1,-1};
-	// while(true){
-	// 	if((status=read(STDIN_FILENO, &c, 1))==-1&&errno != EAGAIN) die("read");
-	// 	key[2]=c;
-	// 	// if(key[2]==61)
-	// 	return c;
-	// }
+	
+	//For Command mode 
+	if (E.c_mode)
+		E.last_key = c;
+
+	//For normal mode 
+	char key[2];
+	if (c==27){
+		if (read(STDIN_FILENO, &key[0], 1) != 1) return '\x1b';
+    	if (read(STDIN_FILENO, &key[1], 1) != 1) return '\x1b';
+		if(key[0]=='['){
+			switch(key[1]){
+				case 'A': return ARROW_UP;
+				case 'B': return ARROW_DOWN;
+				case 'C': return ARROW_RIGHT;
+				case 'D': return ARROW_LEFT;
+				case 'H': return HOME;
+			}
+		}
+	}
 	return c;
 }
 
 
 
 
+
+
+
+
 // Input
+
+
 
 void ProcessKeyPress(){
 
-	int key[3] = {-1,-1,-1};
+	
 	char c;
-	while(true){
-		// while(!(c = ReadKey())){
-		// 	if(getwindowSize(&E.screenrows, &E.screencols) == -1 )
-		// 	die("getWindowSize");
-		// }
+	c = ReadKey();
 
-		if(getwindowSize(&E.screenrows, &E.screencols) == -1)
-			die("getWindowSize");
+	// write(STDOUT_FILENO, to_string(c).c_str() , 6);
+	// ReadKey();
+	if(!E.c_mode){
+		switch(c){
+			
+		case ARROW_UP:
+			if(E.cy>0)
+				E.cy--;
+			else
+				if(E.offset>0) E.offset--;
+			break;
+
+		case ARROW_DOWN:
+			if(E.cy<E.screenrows-2)
+				E.cy++;
+			else if(E.cy+E.offset<D.no_entities)
+				E.offset++;
+			break;
 		
-		c = ReadKey();
-		key[2] = c;
-		string temp = to_string(c);
-		if(key[0]==27 && key[1]==91 ){
-			if(key[2]==65){
-				// write(STDOUT_FILENO, "up" , 3);
-				if(E.cy>0) E.cy--;
-				else{
-					if(E.offset>0) E.offset--;
-				}
-				// E.cy=E.cy==0?E.cy:E.cy-1;
-				break;
-			}
-			else if(key[2]==66){
-				// write(STDOUT_FILENO, "down" , 6);
-				if(E.cy<E.screenrows-2)
-					E.cy++;
-				else{
-					if(E.cy+E.offset<D.no_entities){
-						E.offset++;
-					}
-						
-				}
-
-				// E.cy=E.cy==0?E.cy:E.cy+1;
-				break;
-			}
-			else if(key[2]==67){
-				// write(STDOUT_FILENO, "right" , 6);
-				// if(E.cx<E.screencols)
-				// 	E.cx++;
-				if(!D.buffer_dir_loc.empty()){
+		case ARROW_RIGHT:
+			if(!D.buffer_dir_loc.empty()){
 					initDirs();
 					D.dir_loc.push(D.buffer_dir_loc.top());
 					D.buffer_dir_loc.pop();
 					E.offset=0;
 				}
-
-				break;
-			}
-				
-			else if(key[2]==68){
-				// write(STDOUT_FILENO, "left" , 6);
-				// E.cx=E.cx==0?E.cx:E.cx-1;
-				// break;
-				if(!D.dir_loc.empty()){
+			break;
+		
+		case ARROW_LEFT:
+			if(!D.dir_loc.empty()){
 					initDirs();
 					D.buffer_dir_loc.push(D.dir_loc.top());
 					D.dir_loc.pop();
 					E.offset=0;
 				}
-				if(D.dir_loc.empty()) D.dir_loc.push(getHome());
-				break;
-				}
+			if(D.dir_loc.empty()) D.dir_loc.push(getHome());
+			break;
+		
+		case HOME:
+			initDirs();
+			D.dir_loc.push(getHome());
+			E.offset=0;
+			break;
 
-			else if(key[2]==72){
-				initDirs();
-				D.dir_loc.push(getHome());
-				E.offset=0;
-				break;
-			}
-		}
-
-
-
-		if(iscntrl(c)){
-			//check for ctrl + M
-			if(c==13){
-				//Enter
-				// write(STDOUT_FILENO, "\x1b[2J" , 4);
-				// write(STDOUT_FILENO, "\x1b[H", 3);
-				int pos = E.offset+E.cy;
-				string name = D.cur_entities[pos][0];
-				if (D.cur_entities[pos][5]=="true"){
-					initDirs();
-					E.cx=0;
-					E.cy=0;
-					D.dir_loc.push(D.dir_loc.top()+"/"+name);
-					E.offset=0;
-					}
-				else{
-					string temp = D.dir_loc.top()+"/"+name;
-					int pid=fork();
-					if(pid==0){
-						execl("/usr/bin/vi", "vi", temp.c_str(), (char*)0);
-						exit(1);
-					}
-					else{
-						int wait,stat=0;
-						while((wait=waitpid(pid,&stat,0))!=pid){
-							if(wait==-1) exit(1);
-						}
-					}
-
-				}
-				
-				// write(STDOUT_FILENO, "\x1b[2J" , 4);
-				// write(STDOUT_FILENO, D.cur_entities[pos][5].c_str() , 10);
-				// ProcessKeyPress();
-				break;
-			}
-			else if(c==127){
-				string temp,user_dir,home_dir = getHome();
-				stringstream ss (home_dir);
-				while (getline (ss, temp, '/'));
-				user_dir=home_dir.substr(0,home_dir.size()-temp.size()-1);
-
-				if(D.dir_loc.top()==home_dir){
-					initDirs();
-					D.buffer_dir_loc.push(home_dir);
-					D.dir_loc.pop();
-					D.dir_loc.push(user_dir);
-					E.offset=0;
-				}
-				else if(D.dir_loc.top()==user_dir){
-					initDirs();
-					D.buffer_dir_loc.push(user_dir);
-					D.dir_loc.pop();
-					D.dir_loc.push("/");
-					E.offset=0;
-				}
-				else if (D.dir_loc.top()=="/"){
-					initDirs();
-				}
-				else if(!D.dir_loc.empty()){
-					initDirs();
-					D.buffer_dir_loc.push(D.dir_loc.top());
-					D.dir_loc.pop();
-					E.offset=0;
-				}
-
-				// if(D.dir_loc.empty()) D.dir_loc.push(getHome());
-					
-				//Backspace
-				break;
-			}
-		}
-			
-		if(c=='q') break;
-
-		key[0]=key[1];
-		key[1]=key[2];
-		// if(getwindowSize(&E.screenrows, &E.screencols) == -1 )
-		// die("getWindowSize");
-	}
-	// char c = ReadKey();
-	switch(c){
-		case 'q':
+		case QUIT:
 			write(STDOUT_FILENO, "\x1b[2J" , 4);
 			write(STDOUT_FILENO, "\x1b[H", 3);
 			exit(0);
 			break;
+
+		case ENTER:{
+			int pos = E.offset+E.cy;
+			string name = D.cur_entities[pos][0];
+			if (D.cur_entities[pos][5]=="true"){
+				initDirs();
+				E.cx=0;
+				E.cy=0;
+				D.dir_loc.push(D.dir_loc.top()+"/"+name);
+				E.offset=0;
+			}
+			else{
+				string temp = D.dir_loc.top()+"/"+name;
+				int pid=fork();
+				if(pid==0){
+					execl("/usr/bin/vi", "vi", temp.c_str(), (char*)0);
+					exit(1);
+				}
+				else{
+					int wait,stat=0;
+					while((wait=waitpid(pid,&stat,0))!=pid)
+						if(wait==-1)
+							exit(1);
+				}
+
+			}
+			break;
+		}
+		case BACKSPACE:{
+			string temp,user_dir,home_dir = getHome();
+			stringstream ss (home_dir);
+			while (getline (ss, temp, '/'));
+			user_dir=home_dir.substr(0,home_dir.size()-temp.size()-1);
+
+			if(D.dir_loc.top()==home_dir){
+				initDirs();
+				D.buffer_dir_loc.push(home_dir);
+				D.dir_loc.pop();
+				D.dir_loc.push(user_dir);
+				E.offset=0;
+			}
+			else if(D.dir_loc.top()==user_dir){
+				initDirs();
+				D.buffer_dir_loc.push(user_dir);
+				D.dir_loc.pop();
+				D.dir_loc.push("/");
+				E.offset=0;
+			}
+			else if (D.dir_loc.top()=="/"){
+				initDirs();
+			}
+			else if(!D.dir_loc.empty()){
+				initDirs();
+				D.buffer_dir_loc.push(D.dir_loc.top());
+				D.dir_loc.pop();
+				E.offset=0;
+			}
+			break;
+		}
+		case COLON:
+			E.c_mode = true;
+			E.mode_shift_flag=true;
+			//making the last key as null char so that : is not taken 
+			break;
+		}
+
+	}
+	else{
+		switch(c){
+			case QUIT:
+				write(STDOUT_FILENO, "\x1b[2J" , 4);
+				write(STDOUT_FILENO, "\x1b[H", 3);
+				exit(0);
+				break;
+			case ESC:
+				E.c_mode=false;
+				break;
+			// case BACKSPACE:
+			// 	if(!E.cur_cmd.empty())
+			// 		E.cur_cmd.pop_back();
+			// 	break;
+
+
+
+		}
 	}
 }
 
@@ -494,13 +622,15 @@ void initExplorer(){
 	E.cx=0;
 	E.cy=0;
 	E.offset=0;
+	E.c_mode= false;
+	E.cur_cmd="";
+	E.mode_shift_flag = false;
+	// E.last_key= '\0';
 	D.dir_loc.push(getHome());
 	// D.dir_loc.push(".");
 	if(getwindowSize(&E.screenrows, &E.screencols) == -1 )
 		die("getWindowSize");
 }
-
-
 
 
 

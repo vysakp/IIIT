@@ -1,2 +1,1 @@
-reenrows, &E.screencols) == -1 )
-		die("getWindowSize");
+c_str

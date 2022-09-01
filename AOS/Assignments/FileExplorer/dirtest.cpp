@@ -6,6 +6,7 @@
 #include <pwd.h>
 #include <grp.h>
 #include <iomanip>
+#include <fstream>
 
 using namespace std;
 
@@ -27,7 +28,8 @@ string epoch_to_local(long epoch) {
         const time_t old = (time_t)epoch;
         struct tm *oldt = localtime(&old);
         return asctime(oldt);
-        }
+}
+
 
 void listfiles(const char* dirname){
     DIR* dir=opendir(dirname);
@@ -78,9 +80,39 @@ void listfiles(const char* dirname){
     closedir(dir);
 }
 
+
+void copy_file(string src_loc, string dst_loc){
+    std::ifstream  src(src_loc, std::ios::binary);
+    std::ofstream  dst(dst_loc,   std::ios::binary);
+    dst << src.rdbuf();
+
+    struct stat buf;
+    stat(src_loc.c_str(),&buf);
+    int result =chmod(dst_loc.c_str(), buf.st_mode);
+}
+
+void delete_file(string dst_loc){
+    int result = remove(dst_loc.c_str());
+}
+void move_file(string src_loc, string dst_loc){
+    copy_file(src_loc,dst_loc);
+    delete_file(src_loc);
+}
+
+void rename_file(string old_name, string new_name){
+    move_file(old_name,new_name);
+}
+void create_file(string dst_loc){
+    std::ofstream {dst_loc};
+}
+
+
 int main(){
-    
-    listfiles(".");
+    string src_loc = "/Users/vyshakp/Documents/IIIT/AOS/Assignments/FileExplorer/test/temp/copy.txt";
+    string dst_loc = "/Users/vyshakp/Documents/IIIT/AOS/Assignments/FileExplorer/test/temp/copy3.txt";
+    // copy_file(src_loc,dst_loc);
+    create_file(dst_loc);
+    // listfiles(".");
 
     return 0;
 }
