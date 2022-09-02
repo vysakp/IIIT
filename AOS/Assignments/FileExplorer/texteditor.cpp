@@ -16,6 +16,7 @@
 #include<vector>
 #include<stack>
 #include <fstream>
+#include<queue>
 
 //remove 
 #include <chrono>
@@ -52,6 +53,10 @@ struct explorerConfig{
 	char last_key;
 	//flag is set true if shifted from normal to cmd mode 
 	bool mode_shift_flag;
+	//flag to refresh in command mode 
+	bool refresh_c_mode;
+	//to store result of the command mode 
+	string c_mode_result;
 	string cur_cmd;
 };
 
@@ -266,7 +271,7 @@ void setScreen(string *buffer){
 	home_row<<setw(15)<<left<<D.cur_entities[0][2]<<setw(15)<<left<<D.cur_entities[0][3];
 	home_row<<setw(15)<<left<<D.cur_entities[0][4]<<"\r\n";
 	*buffer+=home_row.str();
-	while(i<E.screenrows+E.offset-1){
+	while(i<E.screenrows+E.offset-2){
 	stringstream entity_row;
 	// entity_row<<"\x1b[K";
 	entity_row<<setw(D.max_entity_len+5)<<left<<D.cur_entities[i][0]<<setw(15)<<left<<D.cur_entities[i][1];
@@ -280,6 +285,64 @@ void setScreen(string *buffer){
 
 
 
+}
+
+bool Search(string entity_name){
+	queue<string> to_visit_dir;
+    to_visit_dir.push(D.dir_loc.top());
+    while(!to_visit_dir.empty()){
+		string cur_dir = to_visit_dir.front();
+		to_visit_dir.pop();
+		DIR* dir=opendir(cur_dir.c_str());
+		if(dir == NULL)
+			return false;
+
+		struct dirent* entity;
+		struct stat buf;
+		entity =readdir(dir);
+		
+		while(entity){
+			stat((cur_dir+"/"+entity->d_name).c_str(),&buf);
+			int check_cur_dir = strcmp(entity->d_name, ".");
+			int check_prev_dir = strcmp(entity->d_name, "..");
+			if (entity->d_name == entity_name)
+					return true;
+			if((S_ISDIR(buf.st_mode))){
+				if(check_cur_dir!=0&&check_prev_dir!=0)
+				{    
+					string new_loc = cur_dir+"/"+entity->d_name;
+					to_visit_dir.push(new_loc);
+				}
+			}
+			entity =readdir(dir);
+		}
+		closedir(dir);
+    }
+
+    return false;
+}
+		
+void Goto(string dest_loc){
+	D.dir_loc.push(dest_loc);
+
+}
+
+void CreateDir(string dir_name, string dir_loc){
+	string dir_path = dir_loc+"/"+dir_name;
+	mkdir(dir_path.c_str(), 0777);
+
+}
+
+void CreateFile(string file_loc){
+	//TODO check the permission of the file created
+	ofstream {file_loc};
+}
+
+void DeleteFile(string file_loc){
+	// int result = remove(file_loc.c_str());
+	//TODO delete the file that doesn't exist
+	if(remove(file_loc.c_str()) != 0 )
+		die("Delete File");
 }
 
 void CopyFile(string src_loc, string dst_loc){
@@ -318,6 +381,7 @@ void execCommand(){
 			// std::this_thread::sleep_for(std::chrono::milliseconds(5000)); 
 			CopyFile(src_loc,dest_loc);
 		}
+		E.refresh_c_mode=true;
 		// write(STDOUT_FILENO, files.c_str(), files.size());
 		// std::this_thread::sleep_for(std::chrono::milliseconds(5000)); 
 
@@ -325,18 +389,102 @@ void execCommand(){
 		
 	}
 	else if(cmd.substr(0,4)=="move"){
+		vector<string> loc_details;
+		string file;
+		string dest_dir,dest_loc,src_loc;
+		stringstream ss(cmd.substr(5));
+		while (getline(ss, file, ' ')){
+			loc_details.push_back(file);
+		}
+		dest_dir=loc_details[loc_details.size()-1];
+		loc_details.pop_back();
+		for(string file:loc_details){
+			src_loc = D.dir_loc.top()+"/"+file;
+			dest_loc=dest_dir+"/"+file;
+			// write(STDOUT_FILENO, dest_loc.c_str(), dest_loc.size());
+			// std::this_thread::sleep_for(std::chrono::milliseconds(5000)); 
+			// write(STDOUT_FILENO, dest_loc.c_str(), dest_loc.size());
+			// std::this_thread::sleep_for(std::chrono::milliseconds(5000)); 
+			CopyFile(src_loc,dest_loc);
+			DeleteFile(src_loc);
+			E.refresh_c_mode=true;
+		}
 		//copy
 	}
 	else if(cmd.substr(0,6)=="rename"){
+		vector<string> loc_details;
+		string file;
+		string new_name,old_name,src_dir;
+		stringstream ss(cmd.substr(7));
+		while (getline(ss, file, ' ')){
+			loc_details.push_back(file);
+		}
+
+		old_name=D.dir_loc.top()+"/"+loc_details[0];
+		new_name=D.dir_loc.top()+"/"+loc_details[1];
+		CopyFile(old_name,new_name);
+		DeleteFile(old_name);
+		E.refresh_c_mode=true;
+		E.c_mode_result="Rename Done";
+
 		//copy
 	}
 	else if(cmd.substr(0,11)=="create_file"){
+		vector<string> loc_details;
+		string file;
+		string dest_loc,file_name;
+		stringstream ss(cmd.substr(12));
+		while (getline(ss, file, ' ')){
+			loc_details.push_back(file);
+		}
+		file_name=loc_details[0];
+		dest_loc=loc_details[1];
+		CreateFile(dest_loc+"/"+file_name);
+		E.refresh_c_mode=true;
+		E.c_mode_result="File created";
+
 		//copy
 	}
 	else if(cmd.substr(0,11)=="delete_file"){
+		string file_loc = cmd.substr(12);
+		DeleteFile(file_loc);
+		E.refresh_c_mode=true;
+		E.c_mode_result="File deleted";
+		// GetDirs(D.dir_loc.top().c_str());
 		//copy
 	}
+	else if(cmd.substr(0,10)=="create_dir"){
+		vector<string> loc_details;
+		string file;
+		string dir_loc,dir_name;
+		stringstream ss(cmd.substr(11));
+		while (getline(ss, file, ' ')){
+			loc_details.push_back(file);
+		}
+		dir_name=loc_details[0];
+		dir_loc=loc_details[1];
+		CreateDir(dir_name,dir_loc);
+		E.refresh_c_mode=true;
+		E.c_mode_result="Directory created";
+		// GetDirs(D.dir_loc.top().c_str());
+		//copy
+	}
+	else if(cmd.substr(0,4)=="goto"){
+		string dest_loc = cmd.substr(5);
+		Goto(dest_loc+"/");
+		E.refresh_c_mode=true;
+	}
 
+	else if(cmd.substr(0,6)=="search"){
+		string name = cmd.substr(7);
+		if (Search(name))
+			E.c_mode_result="True";
+		else
+			E.c_mode_result="False";
+		E.refresh_c_mode=true;
+
+	}
+	
 	E.cur_cmd="";
 	
 
@@ -378,6 +526,9 @@ void setScreenFooter(string *buffer){
 				// execCommand();
 			}
 			*buffer+= cur_mode + E.cur_cmd;	
+			if(E.c_mode_result != ""){
+				*buffer+=("\r\n"+E.c_mode_result);
+			}
 			
 		}
 
@@ -426,6 +577,15 @@ char ReadKey(){
 	char c;
 	int cur_screenrows = E.screenrows;
 	int cur_screencols = E.screencols;
+
+	//to refresh for command mode fuctions 
+	//returning HOME as it is invalid in command mode 
+	if (E.refresh_c_mode){
+		RefreshScreen();
+		E.refresh_c_mode=false;
+		return char(0);
+	}
+			
 	while((nkeys = read(STDIN_FILENO, &c, 1)) != 1){
 		if(nkeys == -1 && errno != EAGAIN) die("read"); 
 
@@ -442,6 +602,10 @@ char ReadKey(){
 	//For Command mode 
 	if (E.c_mode)
 		E.last_key = c;
+
+	//To display the command mode execution message 
+	if(E.c_mode_result != "")
+		E.c_mode_result="";
 
 	//For normal mode 
 	char key[2];
@@ -625,8 +789,12 @@ void initExplorer(){
 	E.c_mode= false;
 	E.cur_cmd="";
 	E.mode_shift_flag = false;
+	E.refresh_c_mode = false;
+	E.c_mode_result="";
 	// E.last_key= '\0';
-	D.dir_loc.push(getHome());
+	//TODO fix back to home 
+	// D.dir_loc.push(getHome());
+	D.dir_loc.push("/Users/vyshakp/Documents/IIIT/AOS/Assignments/FileExplorer/test");
 	// D.dir_loc.push(".");
 	if(getwindowSize(&E.screenrows, &E.screencols) == -1 )
 		die("getWindowSize");
@@ -643,6 +811,7 @@ int main(){
 	while (true) {
 		RefreshScreen();
 		ProcessKeyPress();
+		
 		
 		// char c='\0';
 		// if (read(STDIN_FILENO, &c, 1) == -1 && errno != EAGAIN) die("read");
