@@ -249,7 +249,7 @@ void copy_dir(string src_dir, string dest_loc){
         // cout<<<<"\n";
 
         struct stat buf;
-        stat(dir.c_str(),&buf);
+        
         create_dir(dest_loc+"/"+relative_path, buf.st_mode);
 
         for(auto &file:dir_details[dir]){
@@ -331,10 +331,10 @@ void delete_dir(string src_dir){
         for(auto &file:dir_details[dir]){
             string src_file_path = dir+"/"+file;
             // string dest_file_path = dest_loc+"/"+relative_path+"/"+file;
-            // delete_file(src_file_path);
+            delete_file(src_file_path);
         }
-        cout<<dir<<"\n";
-        // delete_file(dir);
+        // cout<<dir<<"\n";
+        delete_file(dir);
     }
     
 
@@ -343,109 +343,46 @@ void delete_dir(string src_dir){
 }
 
 void move_dir(string src_dir, string dest_loc){
-    
-    int dir_covered=0, dir_to_cover = 1;
-    
-
-    queue<string> to_visit_dir;
-    to_visit_dir.push(src_dir);
-    //maintaining a vector to keep track of the insertion order
-    //unordered map will contain the folders and the corresponding files
-    //here we are traversing in BFS order
-    vector<string> dirs_present;
-    unordered_map<string,vector<string>> dir_details;
-    
-    
-    while(!to_visit_dir.empty()){
-        vector<string> cur_dir_files;
-        string cur_dir = to_visit_dir.front();
-        
-        dirs_present.push_back(cur_dir);
-        to_visit_dir.pop();
-        DIR* dir=opendir(cur_dir.c_str());
-        if(dir == NULL)
-            return;
-
-        struct dirent* entity;
-        struct stat buf;
-        entity =readdir(dir);
-        while(entity){
-            stat((cur_dir+"/"+entity->d_name).c_str(),&buf);
-            int check_cur_dir = strcmp(entity->d_name, ".");
-            int check_prev_dir = strcmp(entity->d_name, "..");
-            // cout<<setw(25)<<left<<entity->d_name<<"\n";
-            if((S_ISDIR(buf.st_mode))){
-                if(check_cur_dir!=0&&check_prev_dir!=0)
-                {    
-                    string new_loc = cur_dir+"/"+entity->d_name;
-                    to_visit_dir.push(new_loc);
-                }
-            }
-            else{
-                // string file_loc = cur_dir+"/"+entity->d_name;
-                string file_loc = entity->d_name;
-                cur_dir_files.push_back(file_loc);
-            }
-            // cout<<typeid(buf.st_mtime).name();
-            
-                
-            entity =readdir(dir);
-        }
-        dir_details.insert({cur_dir,cur_dir_files});
-        closedir(dir);
-    }
-    // for (auto itr = dirs_present.begin(); itr != dirs_present.end(); ++itr) {
-    //     // cout << itr->first<< '\n';
-    //     cout <<*itr<<'\n';
-    //     for (auto it = dir_details[*itr].begin(); it != dir_details[*itr].end(); ++it)
-    //         cout << *it<<" ";
-    //     cout<<'\n';
-    // }
-
-
-    //geting the folder name to be copied
-    //Example: Getting copy_from folder name from here /Users/vyshakp/Documents/IIIT/Temp/copy_from
-    vector<string> loc_details;
-    string t;
-    stringstream ss(src_dir);
-    while (getline(ss, t, '/')){
-        loc_details.push_back(t);
-    }
-    string dir_name=loc_details[loc_details.size()-1];
-    int remaining_path_size = src_dir.size()-dir_name.size();
-    // cout<<src_dir.substr(0,remaining_path_size);
-
-    for(auto &dir:dirs_present){
-        string relative_path = dir.substr(remaining_path_size);
-        // cout<<<<"\n";
-        create_dir(dest_loc+"/"+relative_path);
-
-        for(auto &file:dir_details[dir]){
-            string src_file_path = dir+"/"+file;
-            string dest_file_path = dest_loc+"/"+relative_path+"/"+file;
-            copy_file(src_file_path,dest_file_path);
-        }
-    }
-    
-
-
-
-
-
-
-    
-    
+    copy_dir(src_dir,dest_loc);
+    delete_dir(src_dir);
+}
+string getHome(){
+	return "/Users/vyshakp";
 }
 
 
+// string ResolvePath(string path){
+//     switch(path[0]){
+//         case '/':
+//             //here we are expecting the give path is absolute 
+//             return path;
+//             break;
+//         case '~':
+//             return (getHome() + path.substr(1));
+//             break;
+//         case '.':
+//             //checking if it is ..
+//             if(path[1]=='.')
+//                 return (getHome() + path.substr(2));
+//             return (getHome() + path.substr(1));
+//             break;
+//         default:
+
+//             break;
+//     }
+
+// }
+
 int main(){
-    string src_loc = "/Users/vyshakp/Documents/IIIT/Temp/copy_from";
-    string dst_loc = "/Users/vyshakp/Documents/IIIT/Temp/copy_to";
+    string src_loc = "/Users/vyshakp/Documents/IIIT/AOS/Assignments/FileExplorer/test/temp";
+    string dst_loc = "/Users/vyshakp/Documents/IIIT/AOS/Assignments/FileExplorer/test/temp";
     string delete_loc = "/Users/vyshakp/Documents/IIIT/Temp/copy_to/copy_from";
-    // copy_file(src_loc,dst_loc);
+    copy_dir(src_loc,dst_loc);
     // listAllFiles(src_loc.c_str());
     // copy_dir(src_loc,dst_loc);
-    delete_dir(delete_loc);
+    // move_dir(src_loc,dst_loc);
+
+    // cout<<ResolvePath("~/kjsnfkafjk/fhkjahfjkha");
     // listfiles(".");
 
     return 0;

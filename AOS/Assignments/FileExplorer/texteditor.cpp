@@ -17,6 +17,7 @@
 #include<stack>
 #include <fstream>
 #include<queue>
+#include<unordered_map>
 
 //remove 
 #include <chrono>
@@ -105,6 +106,30 @@ string getHome(){
 	}
 	return homedir;
 }
+
+string ResolvePath(string path){
+    switch(path[0]){
+        case '/':
+            //here we are expecting the give path is absolute 
+            return path;
+            break;
+        case '~':
+            return (getHome() + path.substr(1));
+            break;
+        case '.':
+            //checking if it is ..
+            if(path[1]=='.')
+				return (D.dir_loc.top() +"/"+path);
+            return (D.dir_loc.top() + path.substr(1));
+            break;
+        default:
+			//if we are giving the file name 
+            return (D.dir_loc.top()+"/"+path);
+            break;
+    }
+
+}
+
 // Terminal 
 
 void die(const char *s){
@@ -327,9 +352,9 @@ void Goto(string dest_loc){
 
 }
 
-void CreateDir(string dir_name, string dir_loc){
-	string dir_path = dir_loc+"/"+dir_name;
-	mkdir(dir_path.c_str(), 0777);
+void CreateDir(string dir_path, mode_t permission=(S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)){
+	// string dir_path = dir_loc+"/"+dir_name;
+	mkdir(dir_path.c_str(), permission);
 
 }
 
@@ -355,6 +380,145 @@ void CopyFile(string src_loc, string dst_loc){
     int result =chmod(dst_loc.c_str(), buf.st_mode);
 }
 
+void CopyDir(string src_dir, string dest_loc){
+    
+
+    queue<string> to_visit_dir;
+    to_visit_dir.push(src_dir);
+    //maintaining a vector to keep track of the insertion order
+    //unordered map will contain the folders and the corresponding files
+    //here we are traversing in BFS order
+    vector<string> dirs_present;
+    unordered_map<string,vector<string>> dir_details;
+    
+    
+    while(!to_visit_dir.empty()){
+        vector<string> cur_dir_files;
+        string cur_dir = to_visit_dir.front();
+        
+        dirs_present.push_back(cur_dir);
+        to_visit_dir.pop();
+        DIR* dir=opendir(cur_dir.c_str());
+        if(dir == NULL)
+            return;
+
+        struct dirent* entity;
+        struct stat buf;
+        entity =readdir(dir);
+        while(entity){
+            stat((cur_dir+"/"+entity->d_name).c_str(),&buf);
+            int check_cur_dir = strcmp(entity->d_name, ".");
+            int check_prev_dir = strcmp(entity->d_name, "..");
+            // cout<<setw(25)<<left<<entity->d_name<<"\n";
+            if((S_ISDIR(buf.st_mode))){
+                if(check_cur_dir!=0&&check_prev_dir!=0)
+                {    
+                    string new_loc = cur_dir+"/"+entity->d_name;
+                    to_visit_dir.push(new_loc);
+                }
+            }
+            else{
+                string file_loc = entity->d_name;
+                cur_dir_files.push_back(file_loc);
+            }
+            
+                
+            entity =readdir(dir);
+        }
+        dir_details.insert({cur_dir,cur_dir_files});
+        closedir(dir);
+    }
+
+    //geting the folder name to be copied
+    //Example: Getting copy_from folder name from here /Users/vyshakp/Documents/IIIT/Temp/copy_from
+    vector<string> loc_details;
+    string t;
+    stringstream ss(src_dir);
+    while (getline(ss, t, '/')){
+        loc_details.push_back(t);
+    }
+    string dir_name=loc_details[loc_details.size()-1];
+    int remaining_path_size = src_dir.size()-dir_name.size();
+
+    for(auto &dir:dirs_present){
+        string relative_path = dir.substr(remaining_path_size);
+
+        struct stat buf;
+        stat(dir.c_str(),&buf);
+        CreateDir(dest_loc+"/"+relative_path, buf.st_mode);
+
+        for(auto &file:dir_details[dir]){
+            string src_file_path = dir+"/"+file;
+            string dest_file_path = dest_loc+"/"+relative_path+"/"+file;
+            CopyFile(src_file_path,dest_file_path);
+        }
+    } 
+    
+}
+
+void DeleteDir(string src_dir){
+    queue<string> to_visit_dir;
+    to_visit_dir.push(src_dir);
+    //maintaining a vector to keep track of the insertion order
+    //unordered map will contain the folders and the corresponding files
+    //here we are traversing in BFS order
+    vector<string> dirs_present;
+    unordered_map<string,vector<string>> dir_details;
+    
+    
+    while(!to_visit_dir.empty()){
+        vector<string> cur_dir_files;
+        string cur_dir = to_visit_dir.front();
+        
+        dirs_present.push_back(cur_dir);
+        to_visit_dir.pop();
+        DIR* dir=opendir(cur_dir.c_str());
+        if(dir == NULL)
+            return;
+
+        struct dirent* entity;
+        struct stat buf;
+        entity =readdir(dir);
+        while(entity){
+            stat((cur_dir+"/"+entity->d_name).c_str(),&buf);
+            int check_cur_dir = strcmp(entity->d_name, ".");
+            int check_prev_dir = strcmp(entity->d_name, "..");
+            if((S_ISDIR(buf.st_mode))){
+                if(check_cur_dir!=0&&check_prev_dir!=0)
+                {    
+                    string new_loc = cur_dir+"/"+entity->d_name;
+                    to_visit_dir.push(new_loc);
+                }
+            }
+            else{
+                string file_loc = entity->d_name;
+                cur_dir_files.push_back(file_loc);
+            }
+            entity =readdir(dir);
+        }
+        dir_details.insert({cur_dir,cur_dir_files});
+        closedir(dir);
+    }
+    reverse(dirs_present.begin(),dirs_present.end());
+    for(auto &dir:dirs_present){
+
+        for(auto &file:dir_details[dir]){
+            string src_file_path = dir+"/"+file;
+            DeleteFilemo(src_file_path);
+        }
+        DeleteFile(dir);
+    }
+    
+
+
+
+}
+
+void MoveDir(string src_dir, string dest_loc){
+    CopyDir(src_dir,dest_loc);
+    DeleteDir(src_dir);
+}
+
 void execCommand(){
 	string cmd = E.cur_cmd;
 	int len = cmd.size();
@@ -371,15 +535,22 @@ void execCommand(){
 			loc_details.push_back(file);
 		}
 		dest_dir=loc_details[loc_details.size()-1];
+		dest_dir=ResolvePath(dest_dir);
 		loc_details.pop_back();
+        struct stat buf;
 		for(string file:loc_details){
-			src_loc = D.dir_loc.top()+"/"+file;
-			dest_loc=dest_dir+"/"+file;
-			// write(STDOUT_FILENO, dest_loc.c_str(), dest_loc.size());
-			// std::this_thread::sleep_for(std::chrono::milliseconds(5000)); 
-			// write(STDOUT_FILENO, dest_loc.c_str(), dest_loc.size());
-			// std::this_thread::sleep_for(std::chrono::milliseconds(5000)); 
-			CopyFile(src_loc,dest_loc);
+			src_loc = ResolvePath(file);
+			
+			// dest_loc=dest_dir+"/"+file;
+			stat(src_loc.c_str(),&buf);
+			if((S_ISDIR(buf.st_mode))){
+				dest_loc=dest_dir;
+				CopyDir(src_loc,dest_loc);
+			}
+			else{
+				dest_loc=dest_dir+"/"+file;
+				CopyFile(src_loc,dest_loc);
+			}
 		}
 		E.refresh_c_mode=true;
 		// write(STDOUT_FILENO, files.c_str(), files.size());
@@ -396,17 +567,41 @@ void execCommand(){
 		while (getline(ss, file, ' ')){
 			loc_details.push_back(file);
 		}
-		dest_dir=loc_details[loc_details.size()-1];
+		dest_dir=ResolvePath(loc_details[loc_details.size()-1]);
 		loc_details.pop_back();
+
+        struct stat buf;
 		for(string file:loc_details){
-			src_loc = D.dir_loc.top()+"/"+file;
-			dest_loc=dest_dir+"/"+file;
+			src_loc = ResolvePath(file);
+
+			
+			stat(src_loc.c_str(),&buf);
+			if((S_ISDIR(buf.st_mode))){
+				dest_loc=dest_dir;
+				write(STDOUT_FILENO, src_loc.c_str(), src_loc.size());
+				std::this_thread::sleep_for(std::chrono::milliseconds(5000)); 
+				write(STDOUT_FILENO, dest_loc.c_str(), dest_loc.size());
+				std::this_thread::sleep_for(std::chrono::milliseconds(5000)); 
+				// CopyDir(src_loc,dest_loc);
+				// DeleteDir(src_loc);
+			}
+			else{
+				dest_loc=dest_dir+"/"+file;
+				write(STDOUT_FILENO, src_loc.c_str(), src_loc.size());
+				std::this_thread::sleep_for(std::chrono::milliseconds(5000)); 
+				write(STDOUT_FILENO, dest_loc.c_str(), dest_loc.size());
+				std::this_thread::sleep_for(std::chrono::milliseconds(10000)); 
+				// CopyFile(src_loc,dest_loc);
+				// DeleteFile(src_loc);
+			}
+
+			// dest_loc=dest_dir+"/"+file;
 			// write(STDOUT_FILENO, dest_loc.c_str(), dest_loc.size());
 			// std::this_thread::sleep_for(std::chrono::milliseconds(5000)); 
 			// write(STDOUT_FILENO, dest_loc.c_str(), dest_loc.size());
 			// std::this_thread::sleep_for(std::chrono::milliseconds(5000)); 
-			CopyFile(src_loc,dest_loc);
-			DeleteFile(src_loc);
+			// CopyFile(src_loc,dest_loc);
+			// DeleteFile(src_loc);
 			E.refresh_c_mode=true;
 		}
 		//copy
@@ -419,9 +614,10 @@ void execCommand(){
 		while (getline(ss, file, ' ')){
 			loc_details.push_back(file);
 		}
-
-		old_name=D.dir_loc.top()+"/"+loc_details[0];
-		new_name=D.dir_loc.top()+"/"+loc_details[1];
+		// old_name=D.dir_loc.top()+"/"+loc_details[0];
+		// new_name=D.dir_loc.top()+"/"+loc_details[1];
+		old_name=ResolvePath(loc_details[0]);
+		new_name=ResolvePath(loc_details[1]);
 		CopyFile(old_name,new_name);
 		DeleteFile(old_name);
 		E.refresh_c_mode=true;
@@ -438,7 +634,7 @@ void execCommand(){
 			loc_details.push_back(file);
 		}
 		file_name=loc_details[0];
-		dest_loc=loc_details[1];
+		dest_loc=ResolvePath(loc_details[1]);
 		CreateFile(dest_loc+"/"+file_name);
 		E.refresh_c_mode=true;
 		E.c_mode_result="File created";
@@ -446,7 +642,7 @@ void execCommand(){
 		//copy
 	}
 	else if(cmd.substr(0,11)=="delete_file"){
-		string file_loc = cmd.substr(12);
+		string file_loc = ResolvePath(cmd.substr(12));
 		DeleteFile(file_loc);
 		E.refresh_c_mode=true;
 		E.c_mode_result="File deleted";
@@ -462,15 +658,16 @@ void execCommand(){
 			loc_details.push_back(file);
 		}
 		dir_name=loc_details[0];
-		dir_loc=loc_details[1];
-		CreateDir(dir_name,dir_loc);
+		dir_loc=ResolvePath(loc_details[1]);
+		string dir_path = dir_loc+"/"+dir_name;
+		CreateDir(dir_path);
 		E.refresh_c_mode=true;
 		E.c_mode_result="Directory created";
 		// GetDirs(D.dir_loc.top().c_str());
 		//copy
 	}
 	else if(cmd.substr(0,4)=="goto"){
-		string dest_loc = cmd.substr(5);
+		string dest_loc = ResolvePath(cmd.substr(5));
 		Goto(dest_loc+"/");
 		E.refresh_c_mode=true;
 	}
