@@ -18,6 +18,7 @@
 #include <fstream>
 #include<queue>
 #include<unordered_map>
+#include <fcntl.h>  
 
 //remove 
 #include <chrono>
@@ -98,6 +99,23 @@ void initDirs(){
 
 
 //helper fuctions 
+
+string PopOneDir(string path){
+	//Function to pop a dir from the given path
+	//Eg : /Users/vyshakp/Documents/IIIT/AOS/Assignments/FileExplorer/test
+	// Gives : /Users/vyshakp/Documents/IIIT/AOS/Assignments/FileExplorer
+	if(path.size()<2||path[0]!='/')
+		return path;
+	vector<string> loc_details;
+    string t;
+    stringstream ss(path);
+    while (getline(ss, t, '/')){
+        loc_details.push_back(t);
+    }
+    string last_dir_name=loc_details[loc_details.size()-1];
+	return path.substr(0,path.size()-last_dir_name.size()-1);
+}
+
 string getHome(){
 	const char *homedir;
 
@@ -119,7 +137,7 @@ string ResolvePath(string path){
         case '.':
             //checking if it is ..
             if(path[1]=='.')
-				return (D.dir_loc.top() +"/"+path);
+				return PopOneDir(D.dir_loc.top());
             return (D.dir_loc.top() + path.substr(1));
             break;
         default:
@@ -361,6 +379,11 @@ void CreateDir(string dir_path, mode_t permission=(S_IRWXU | S_IRWXG | S_IROTH |
 void CreateFile(string file_loc){
 	//TODO check the permission of the file created
 	ofstream {file_loc};
+	// write(STDOUT_FILENO, file_loc.c_str(), file_loc.size());
+	// std::this_thread::sleep_for(std::chrono::milliseconds(5000)); 
+	// creat(file_loc.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+	// open(file_loc.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
 }
 
 void DeleteFile(string file_loc){
@@ -504,7 +527,7 @@ void DeleteDir(string src_dir){
 
         for(auto &file:dir_details[dir]){
             string src_file_path = dir+"/"+file;
-            DeleteFilemo(src_file_path);
+            DeleteFile(src_file_path);
         }
         DeleteFile(dir);
     }
@@ -578,21 +601,21 @@ void execCommand(){
 			stat(src_loc.c_str(),&buf);
 			if((S_ISDIR(buf.st_mode))){
 				dest_loc=dest_dir;
-				write(STDOUT_FILENO, src_loc.c_str(), src_loc.size());
-				std::this_thread::sleep_for(std::chrono::milliseconds(5000)); 
-				write(STDOUT_FILENO, dest_loc.c_str(), dest_loc.size());
-				std::this_thread::sleep_for(std::chrono::milliseconds(5000)); 
-				// CopyDir(src_loc,dest_loc);
-				// DeleteDir(src_loc);
+				// write(STDOUT_FILENO, src_loc.c_str(), src_loc.size());
+				// std::this_thread::sleep_for(std::chrono::milliseconds(5000)); 
+				// write(STDOUT_FILENO, dest_loc.c_str(), dest_loc.size());
+				// std::this_thread::sleep_for(std::chrono::milliseconds(5000)); 
+				CopyDir(src_loc,dest_loc);
+				DeleteDir(src_loc);
 			}
 			else{
 				dest_loc=dest_dir+"/"+file;
-				write(STDOUT_FILENO, src_loc.c_str(), src_loc.size());
-				std::this_thread::sleep_for(std::chrono::milliseconds(5000)); 
-				write(STDOUT_FILENO, dest_loc.c_str(), dest_loc.size());
-				std::this_thread::sleep_for(std::chrono::milliseconds(10000)); 
-				// CopyFile(src_loc,dest_loc);
-				// DeleteFile(src_loc);
+				// write(STDOUT_FILENO, src_loc.c_str(), src_loc.size());
+				// std::this_thread::sleep_for(std::chrono::milliseconds(5000)); 
+				// write(STDOUT_FILENO, dest_loc.c_str(), dest_loc.size());
+				// std::this_thread::sleep_for(std::chrono::milliseconds(10000)); 
+				CopyFile(src_loc,dest_loc);
+				DeleteFile(src_loc);
 			}
 
 			// dest_loc=dest_dir+"/"+file;
@@ -679,6 +702,12 @@ void execCommand(){
 		else
 			E.c_mode_result="False";
 		E.refresh_c_mode=true;
+
+	}
+	else if(cmd=="quit"){
+		write(STDOUT_FILENO, "\x1b[2J" , 4);
+		write(STDOUT_FILENO, "\x1b[H", 3);
+		exit(0);
 
 	}
 	
@@ -845,17 +874,23 @@ void ProcessKeyPress(){
 		switch(c){
 			
 		case ARROW_UP:
-			if(E.cy>0)
+			if(E.cy>1)
 				E.cy--;
 			else
 				if(E.offset>0) E.offset--;
 			break;
 
 		case ARROW_DOWN:
-			if(E.cy<E.screenrows-2)
-				E.cy++;
+		// if(E.cy<D.no_entities)
+
+			// if(E.cy<E.screenrows-2)
+			//TODO Fix the screen scrolling 
+			if(E.cy<E.screenrows-3 && E.cy<D.no_entities)
+					E.cy++;
 			else if(E.cy+E.offset<D.no_entities)
 				E.offset++;
+			
+			
 			break;
 		
 		case ARROW_RIGHT:
@@ -896,7 +931,11 @@ void ProcessKeyPress(){
 				initDirs();
 				E.cx=0;
 				E.cy=0;
-				D.dir_loc.push(D.dir_loc.top()+"/"+name);
+				if(name==".");
+				else if(name=="..")
+					D.dir_loc.push(PopOneDir(D.dir_loc.top()));
+				else
+					D.dir_loc.push(D.dir_loc.top()+"/"+name);
 				E.offset=0;
 			}
 			else{
@@ -957,11 +996,6 @@ void ProcessKeyPress(){
 	}
 	else{
 		switch(c){
-			case QUIT:
-				write(STDOUT_FILENO, "\x1b[2J" , 4);
-				write(STDOUT_FILENO, "\x1b[H", 3);
-				exit(0);
-				break;
 			case ESC:
 				E.c_mode=false;
 				break;
@@ -981,7 +1015,7 @@ void ProcessKeyPress(){
 
 void initExplorer(){
 	E.cx=0;
-	E.cy=0;
+	E.cy=1;
 	E.offset=0;
 	E.c_mode= false;
 	E.cur_cmd="";
@@ -990,8 +1024,8 @@ void initExplorer(){
 	E.c_mode_result="";
 	// E.last_key= '\0';
 	//TODO fix back to home 
-	// D.dir_loc.push(getHome());
-	D.dir_loc.push("/Users/vyshakp/Documents/IIIT/AOS/Assignments/FileExplorer/test");
+	D.dir_loc.push(getHome());
+	// D.dir_loc.push("/Users/vyshakp/Documents/IIIT/AOS/Assignments/FileExplorer/test");
 	// D.dir_loc.push(".");
 	if(getwindowSize(&E.screenrows, &E.screencols) == -1 )
 		die("getWindowSize");
