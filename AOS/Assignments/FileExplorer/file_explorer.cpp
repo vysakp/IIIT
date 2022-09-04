@@ -80,7 +80,8 @@ void initDirs(){
 	D.cur_entities[0][1] = "Permissions";
 	D.cur_entities[0][2] = "Size";
 	D.cur_entities[0][3] = "Group";
-	D.cur_entities[0][4] = "user";
+	D.cur_entities[0][4] = "User";
+	D.cur_entities[0][6] = "Date";
 	D.no_entities = 0;
 }
 
@@ -127,10 +128,17 @@ string ResolvePath(string path){
         path(string): Absolute path
 	*/
     switch(path[0]){
-        case '/':
+        case '/':{
             //here we are expecting the given path is absolute 
-            return path;
+			int path_len = path.size();
+			if (path_len==1)
+            	return path;
+			else if(path[path_len-1]=='/')
+				return path.substr(0,path_len-1);
+			else
+				return path;
             break;
+			}
         case '~':
             return (GetHome() + path.substr(1));
             break;
@@ -269,7 +277,10 @@ string EpochToLocal(long epoch) {
 	*/
         const time_t old = (time_t)epoch;
         struct tm *oldt = localtime(&old);
-        return asctime(oldt);
+		string local_time=asctime(oldt);
+		//removing the enline char
+        local_time.pop_back();
+		return local_time;
 }
 
 void GetDirs(const char* dirname){
@@ -300,8 +311,15 @@ void GetDirs(const char* dirname){
         struct group  *gr = getgrgid(buf.st_gid);
 		//type of file https://aljensencprogramming.wordpress.com/tag/st_mode/
         string permissions = GetPremission(buf.st_mode);
-        string group_name = gr->gr_name;
-        string user_name = us->pw_name;
+		string group_name,user_name;
+		if(gr)
+        	group_name = gr->gr_name;
+		else
+			group_name = "---";
+		if(us)
+        	user_name = us->pw_name;
+		else
+			user_name = "---";
 		string mod_time=EpochToLocal(buf.st_mtime);
 		//checking if directory or not
 		string is_dir =(S_ISDIR(buf.st_mode))? "true" : "false";
@@ -313,6 +331,7 @@ void GetDirs(const char* dirname){
 		D.cur_entities[i][3] = group_name;
 		D.cur_entities[i][4] = user_name;
 		D.cur_entities[i][5] = is_dir;
+		D.cur_entities[i][6] = mod_time;
 		D.max_entity_len=D.max_entity_len>D.cur_entities[i][0].length()?\
 						 D.max_entity_len:D.cur_entities[i][0].length();
 		i++;
@@ -335,23 +354,24 @@ void SetScreen(string *buffer){
 	int i=E.offset+1;
 	stringstream home_row;
 	int entity_name_width = max(15,D.max_entity_len+5);
-	home_row<<"\033[31m"<<setw(entity_name_width)<<left<<D.cur_entities[0][0]<<setw(15)<<left<<D.cur_entities[0][1];
+	home_row<<"\033[92m"<<setw(entity_name_width)<<left<<D.cur_entities[0][0]<<setw(15)<<left<<D.cur_entities[0][1];
 	home_row<<setw(15)<<left<<D.cur_entities[0][2]<<setw(15)<<left<<D.cur_entities[0][3];
-	home_row<<setw(15)<<left<<D.cur_entities[0][4]<<"\033[0m\r\n";
+	home_row<<setw(15)<<left<<D.cur_entities[0][4]<<setw(15)<<left<<D.cur_entities[0][6]<<"\033[0m\r\n";
 	*buffer+=home_row.str();
 
 	while(i<E.screenrows+E.offset-2){
 	stringstream entity_row;
-
+	//not adding \n at the end because the date variable has a \n in it
 	if(D.cur_entities[i][5]=="true"){
-		entity_row<<"\033[34;1m"<<setw(entity_name_width)<<left<<D.cur_entities[i][0]<<"\033[0m"<<setw(15)<<left<<D.cur_entities[i][1];
-		entity_row<<setw(15)<<left<<D.cur_entities[i][2]<<setw(15)<<left<<D.cur_entities[i][3];
-		entity_row<<setw(15)<<left<<D.cur_entities[i][4]<<"\r\n";
+		entity_row<<"\033[96;1m"<<setw(entity_name_width)<<left<<D.cur_entities[i][0]<<"\033[0m";
+		entity_row<<setw(15)<<left<<D.cur_entities[i][1]<<setw(15)<<left<<D.cur_entities[i][2];
+		entity_row<<setw(15)<<left<<D.cur_entities[i][3]<<setw(15)<<left<<D.cur_entities[i][4];
+		entity_row<<setw(25)<<left<<D.cur_entities[i][6]<<"\r\n";
 	}
 	else{
 		entity_row<<setw(entity_name_width)<<left<<D.cur_entities[i][0]<<setw(15)<<left<<D.cur_entities[i][1];
 		entity_row<<setw(15)<<left<<D.cur_entities[i][2]<<setw(15)<<left<<D.cur_entities[i][3];
-		entity_row<<setw(15)<<left<<D.cur_entities[i][4]<<"\r\n";
+		entity_row<<setw(15)<<left<<D.cur_entities[i][4]<<setw(25)<<left<<D.cur_entities[i][6]<<"\r\n";
 	}
 	i++;
 	*buffer+=entity_row.str();
@@ -621,12 +641,24 @@ void ExecCommand(){
 		while (getline(ss, file, ' ')){
 			loc_details.push_back(file);
 		}
+		if(loc_details.size()<2){
+				E.refresh_c_mode=true;	
+				E.c_mode_result="\033[91mNot a valid Input\033[0m";	
+				return;
+			}
 		dest_dir=loc_details[loc_details.size()-1];
 		dest_dir=ResolvePath(dest_dir);
 		loc_details.pop_back();
         struct stat buf;
 		for(string file:loc_details){
 			src_loc = ResolvePath(file);
+
+			if(open(src_loc.c_str(),O_RDONLY)==-1){
+				E.refresh_c_mode=true;	
+				E.c_mode_result="\033[91mInvalid path\033[0m";	
+				return;
+			}
+
 			stat(src_loc.c_str(),&buf);
 			if((S_ISDIR(buf.st_mode))){
 				dest_loc=dest_dir;
@@ -638,7 +670,7 @@ void ExecCommand(){
 			}
 		}
 		E.refresh_c_mode=true;	
-		E.c_mode_result="Copy Completed";	
+		E.c_mode_result="\033[93mCopy Completed\033[0m";	
 	}
 
 	else if(cmd.substr(0,4)=="move"){
@@ -650,6 +682,11 @@ void ExecCommand(){
 		while (getline(ss, file, ' ')){
 			loc_details.push_back(file);
 		}
+		if(loc_details.size()<2){
+				E.refresh_c_mode=true;	
+				E.c_mode_result="\033[91mNot a valid Input\033[0m";	
+				return;
+			}
 		dest_dir=ResolvePath(loc_details[loc_details.size()-1]);
 		loc_details.pop_back();
 
@@ -657,7 +694,12 @@ void ExecCommand(){
 		for(string file:loc_details){
 			src_loc = ResolvePath(file);
 
-			
+			if(open(src_loc.c_str(),O_RDONLY)==-1){
+				E.refresh_c_mode=true;	
+				E.c_mode_result="\033[91mInvalid path\033[0m";	
+				return;
+			}
+
 			stat(src_loc.c_str(),&buf);
 			if((S_ISDIR(buf.st_mode))){
 				dest_loc=dest_dir;
@@ -669,9 +711,9 @@ void ExecCommand(){
 				CopyFile(src_loc,dest_loc);
 				DeleteFile(src_loc);
 			}
-			E.refresh_c_mode=true;
-			E.c_mode_result="Move Completed";
 		}
+		E.refresh_c_mode=true;
+		E.c_mode_result="\033[93mMove Completed\033[0m";
 	}
 
 	else if(cmd.substr(0,6)=="rename"){
@@ -683,12 +725,22 @@ void ExecCommand(){
 		while (getline(ss, file, ' ')){
 			loc_details.push_back(file);
 		}
+		if(loc_details.size()!=2){
+				E.refresh_c_mode=true;	
+				E.c_mode_result="\033[91mNot a valid Input\033[0m";	
+				return;
+			}
 		old_name=ResolvePath(loc_details[0]);
 		new_name=ResolvePath(loc_details[1]);
+		if(open(old_name.c_str(),O_RDONLY)==-1){
+				E.refresh_c_mode=true;	
+				E.c_mode_result="\033[91mInvalid File Name\033[0m";	
+				return;
+		}
 		CopyFile(old_name,new_name);
 		DeleteFile(old_name);
 		E.refresh_c_mode=true;
-		E.c_mode_result="Rename Done";
+		E.c_mode_result="\033[93mRename Done\033[0m";
 	}
 
 	else if(cmd.substr(0,11)=="create_file"){
@@ -702,17 +754,27 @@ void ExecCommand(){
 		}
 		file_name=loc_details[0];
 		dest_loc=ResolvePath(loc_details[1]);
+		if(open(dest_loc.c_str(),O_RDONLY)==-1){
+				E.refresh_c_mode=true;	
+				E.c_mode_result="\033[91mInvalid Path\033[0m";	
+				return;
+		}
 		CreateFile(dest_loc+"/"+file_name);
 		E.refresh_c_mode=true;
-		E.c_mode_result="File created";
+		E.c_mode_result="\033[93mFile created\033[0m";
 	}
 
 	else if(cmd.substr(0,11)=="delete_file"){
 
 		string file_loc = ResolvePath(cmd.substr(12));
+		if(open(file_loc.c_str(),O_RDONLY)==-1){
+				E.refresh_c_mode=true;	
+				E.c_mode_result="\033[91mInvalid Path\033[0m";	
+				return;
+		}
 		DeleteFile(file_loc);
 		E.refresh_c_mode=true;
-		E.c_mode_result="File deleted";
+		E.c_mode_result="\033[93mFile deleted\033[0m";
 	}
 
 	else if(cmd.substr(0,10)=="create_dir"){
@@ -726,23 +788,38 @@ void ExecCommand(){
 		}
 		dir_name=loc_details[0];
 		dir_loc=ResolvePath(loc_details[1]);
+		if(open(dir_loc.c_str(),O_RDONLY)==-1){
+				E.refresh_c_mode=true;	
+				E.c_mode_result="\033[91mInvalid Path\033[0m";	
+				return;
+		}
 		string dir_path = dir_loc+"/"+dir_name;
 		CreateDir(dir_path);
 		E.refresh_c_mode=true;
-		E.c_mode_result="Directory created";
+		E.c_mode_result="\033[93mDirectory created\033[0m";
 	}
 
 	else if(cmd.substr(0,10)=="delete_dir"){
 
 		string dir_loc = ResolvePath(cmd.substr(11));
+		if(open(dir_loc.c_str(),O_RDONLY)==-1){
+				E.refresh_c_mode=true;	
+				E.c_mode_result="\033[91mInvalid Path\033[0m";	
+				return;
+		}
 		DeleteDir(dir_loc);
 		E.refresh_c_mode=true;
-		E.c_mode_result="Directory created";
+		E.c_mode_result="\033[93mDirectory deleted\033[0m";
 	}
 
 	else if(cmd.substr(0,4)=="goto"){
 
 		string dest_loc = ResolvePath(cmd.substr(5));
+		if(open(dest_loc.c_str(),O_RDONLY)==-1){
+				E.refresh_c_mode=true;	
+				E.c_mode_result="\033[91mInvalid Path\033[0m";	
+				return;
+		}
 		Goto(dest_loc+"/");
 		E.refresh_c_mode=true;
 	}
@@ -751,12 +828,12 @@ void ExecCommand(){
 
 		string name = cmd.substr(7);
 		if (Search(name))
-			E.c_mode_result="True";
+			E.c_mode_result="\033[92mTrue\033[0m";
 		else
-			E.c_mode_result="False";
+			E.c_mode_result="\033[91mFalse\033[0";
 		E.refresh_c_mode=true;
 	}
-	else if(cmd=="quit"){
+	else if(cmd.substr(0,4)=="quit"){
 
 		write(STDOUT_FILENO, "\x1b[2J" , 4);
 		write(STDOUT_FILENO, "\x1b[H", 3);
@@ -815,7 +892,7 @@ void RefreshScreen(){
 	string refreshScreenBuffer = "\x1b[?25l";
 	//\x1b[2J is to clear the screen 
 	//\x1b[H is to bring the cursor back to begining 
-	refreshScreenBuffer+="\x1b[2J";
+	refreshScreenBuffer+="\x1b[2J\x1b[3J";
 	refreshScreenBuffer+="\x1b[H";
 	const char* loc = D.dir_loc.top().c_str();
 	
@@ -847,6 +924,7 @@ char ReadKey(){
 
 	//To refresh screen for command mode fuctions 
 	if (E.refresh_c_mode){
+		initDirs();
 		RefreshScreen();
 		E.refresh_c_mode=false;
 		return char(0);
