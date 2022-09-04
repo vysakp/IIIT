@@ -43,6 +43,7 @@ enum keybind {
 struct explorerConfig{
 	int cx,cy;
 	int offset;
+	int cy_buffer;
 	int screenrows;
 	int screencols;
 	struct termios org_termios;
@@ -80,7 +81,7 @@ void initDirs(){
 	D.cur_entities[0][2] = "Size";
 	D.cur_entities[0][3] = "Group";
 	D.cur_entities[0][4] = "user";
-	D.no_entities = 0;	
+	D.no_entities = 0;
 }
 
 //helper fuctions 
@@ -271,7 +272,6 @@ string EpochToLocal(long epoch) {
         return asctime(oldt);
 }
 
-
 void GetDirs(const char* dirname){
 	/* Function to the entity details in the given directory
 	Args: 
@@ -334,16 +334,25 @@ void SetScreen(string *buffer){
 	*/
 	int i=E.offset+1;
 	stringstream home_row;
-	home_row<<setw(D.max_entity_len+5)<<left<<D.cur_entities[0][0]<<setw(15)<<left<<D.cur_entities[0][1];
+	int entity_name_width = max(15,D.max_entity_len+5);
+	home_row<<"\033[31m"<<setw(entity_name_width)<<left<<D.cur_entities[0][0]<<setw(15)<<left<<D.cur_entities[0][1];
 	home_row<<setw(15)<<left<<D.cur_entities[0][2]<<setw(15)<<left<<D.cur_entities[0][3];
-	home_row<<setw(15)<<left<<D.cur_entities[0][4]<<"\r\n";
+	home_row<<setw(15)<<left<<D.cur_entities[0][4]<<"\033[0m\r\n";
 	*buffer+=home_row.str();
 
 	while(i<E.screenrows+E.offset-2){
 	stringstream entity_row;
-	entity_row<<setw(D.max_entity_len+5)<<left<<D.cur_entities[i][0]<<setw(15)<<left<<D.cur_entities[i][1];
-	entity_row<<setw(15)<<left<<D.cur_entities[i][2]<<setw(15)<<left<<D.cur_entities[i][3];
-	entity_row<<setw(15)<<left<<D.cur_entities[i][4]<<"\r\n";
+
+	if(D.cur_entities[i][5]=="true"){
+		entity_row<<"\033[34;1m"<<setw(entity_name_width)<<left<<D.cur_entities[i][0]<<"\033[0m"<<setw(15)<<left<<D.cur_entities[i][1];
+		entity_row<<setw(15)<<left<<D.cur_entities[i][2]<<setw(15)<<left<<D.cur_entities[i][3];
+		entity_row<<setw(15)<<left<<D.cur_entities[i][4]<<"\r\n";
+	}
+	else{
+		entity_row<<setw(entity_name_width)<<left<<D.cur_entities[i][0]<<setw(15)<<left<<D.cur_entities[i][1];
+		entity_row<<setw(15)<<left<<D.cur_entities[i][2]<<setw(15)<<left<<D.cur_entities[i][3];
+		entity_row<<setw(15)<<left<<D.cur_entities[i][4]<<"\r\n";
+	}
 	i++;
 	*buffer+=entity_row.str();
 	}
@@ -596,7 +605,7 @@ void MoveDir(string src_dir, string dest_loc){
     DeleteDir(src_dir);
 }
 
-void execCommand(){
+void ExecCommand(){
 	/* Function to execute a command in Command mode
 	*/
 
@@ -723,6 +732,14 @@ void execCommand(){
 		E.c_mode_result="Directory created";
 	}
 
+	else if(cmd.substr(0,10)=="delete_dir"){
+
+		string dir_loc = ResolvePath(cmd.substr(11));
+		DeleteDir(dir_loc);
+		E.refresh_c_mode=true;
+		E.c_mode_result="Directory created";
+	}
+
 	else if(cmd.substr(0,4)=="goto"){
 
 		string dest_loc = ResolvePath(cmd.substr(5));
@@ -755,7 +772,8 @@ void SetScreenFooter(string *buffer){
         buffer(string*): Source location of the directory
 	*/
 
-	string cur_mode = E.c_mode ? "Command mode:":"Normal Mode:";
+	string cur_mode = E.c_mode ? " Command mode :":" Normal Mode :";
+	cur_mode = "\033[30;47m"+cur_mode+"\033[0m";
 	if (!E.c_mode)
 		*buffer+= cur_mode + D.dir_loc.top();
 	else{
@@ -779,7 +797,7 @@ void SetScreenFooter(string *buffer){
 
 			}
 			else{
-				execCommand();
+				ExecCommand();
 				E.cur_cmd="";
 			}
 			*buffer+= cur_mode + E.cur_cmd;	
@@ -892,9 +910,11 @@ void ProcessKeyPress(){
 			break;
 
 		case ARROW_DOWN:
-			if(E.cy<E.screenrows-3)
-					E.cy++;
-			else if(E.cy+E.offset<D.no_entities)
+			if(E.cy<E.screenrows-3 && E.cy<D.no_entities)
+				E.cy++;
+			else if (E.cy<E.screenrows-3)
+				E.cy_buffer++;
+			else if(E.cy+E.offset+E.cy_buffer<D.no_entities)
 				E.offset++;
 			break;
 		
@@ -904,6 +924,7 @@ void ProcessKeyPress(){
 					D.dir_loc.push(D.buffer_dir_loc.top());
 					D.buffer_dir_loc.pop();
 					E.offset=0;
+					E.cy_buffer=0;
 				}
 			break;
 		
@@ -913,6 +934,7 @@ void ProcessKeyPress(){
 					D.buffer_dir_loc.push(D.dir_loc.top());
 					D.dir_loc.pop();
 					E.offset=0;
+					E.cy_buffer=0;
 				}
 			if(D.dir_loc.empty()) D.dir_loc.push(GetHome());
 			break;
@@ -921,6 +943,7 @@ void ProcessKeyPress(){
 			initDirs();
 			D.dir_loc.push(GetHome());
 			E.offset=0;
+			E.cy_buffer=0;
 			break;
 
 		case QUIT:
@@ -935,13 +958,16 @@ void ProcessKeyPress(){
 			if (D.cur_entities[pos][5]=="true"){
 				initDirs();
 				E.cx=0;
-				E.cy=0;
+				E.cy=1;
 				if(name==".");
 				else if(name=="..")
 					D.dir_loc.push(PopOneDir(D.dir_loc.top()));
+				else if(D.dir_loc.top()=="/")
+					D.dir_loc.push(D.dir_loc.top()+name);
 				else
 					D.dir_loc.push(D.dir_loc.top()+"/"+name);
 				E.offset=0;
+				E.cy_buffer=0;
 			}
 			else{
 				string temp = D.dir_loc.top()+"/"+name;
@@ -973,6 +999,7 @@ void ProcessKeyPress(){
 				D.dir_loc.pop();
 				D.dir_loc.push(user_dir);
 				E.offset=0;
+				E.cy_buffer=0;
 			}
 			else if(D.dir_loc.top()==user_dir){
 				initDirs();
@@ -980,6 +1007,7 @@ void ProcessKeyPress(){
 				D.dir_loc.pop();
 				D.dir_loc.push("/");
 				E.offset=0;
+				E.cy_buffer=0;
 			}
 			else if (D.dir_loc.top()=="/"){
 				initDirs();
@@ -989,6 +1017,7 @@ void ProcessKeyPress(){
 				D.buffer_dir_loc.push(D.dir_loc.top());
 				D.dir_loc.pop();
 				E.offset=0;
+				E.cy_buffer=0;
 			}
 			break;
 		}
@@ -1018,6 +1047,7 @@ void initExplorer(){
 	E.cx=0;
 	E.cy=1;
 	E.offset=0;
+	E.cy_buffer=0;
 	E.c_mode= false;
 	E.cur_cmd="";
 	E.mode_shift_flag = false;
