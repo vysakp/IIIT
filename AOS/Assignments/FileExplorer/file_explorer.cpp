@@ -438,7 +438,6 @@ void CreateDir(string dir_path, mode_t permission=(S_IRWXU | S_IRWXG | S_IROTH |
         permission(mode_t): Permission flag for the directory
 	*/
 	mkdir(dir_path.c_str(), permission);
-
 }
 
 void CreateFile(string file_loc){
@@ -752,6 +751,11 @@ void ExecCommand(){
 		while (getline(ss, file, ' ')){
 			loc_details.push_back(file);
 		}
+		if(loc_details.size()<2){
+				E.refresh_c_mode=true;	
+				E.c_mode_result="\033[91mNot a valid Input\033[0m";	
+				return;
+			}
 		file_name=loc_details[0];
 		dest_loc=ResolvePath(loc_details[1]);
 		if(open(dest_loc.c_str(),O_RDONLY)==-1){
@@ -783,9 +787,14 @@ void ExecCommand(){
 		string file;
 		string dir_loc,dir_name;
 		stringstream ss(cmd.substr(11));
-		while (getline(ss, file, ' ')){
+		while (getline(ss, file,' ')){
 			loc_details.push_back(file);
 		}
+		if(loc_details.size()<2){
+				E.refresh_c_mode=true;	
+				E.c_mode_result="\033[91mNot a valid Input\033[0m";	
+				return;
+			}
 		dir_name=loc_details[0];
 		dir_loc=ResolvePath(loc_details[1]);
 		if(open(dir_loc.c_str(),O_RDONLY)==-1){
@@ -794,6 +803,7 @@ void ExecCommand(){
 				return;
 		}
 		string dir_path = dir_loc+"/"+dir_name;
+
 		CreateDir(dir_path);
 		E.refresh_c_mode=true;
 		E.c_mode_result="\033[93mDirectory created\033[0m";
