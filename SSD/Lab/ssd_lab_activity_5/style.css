@@ -1,0 +1,106 @@
+body  
+{  
+    margin: 0;  
+    padding: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    background: rgb(100,101,101);
+    background: linear-gradient(90deg, rgba(100,101,101,1) 0%, rgba(0,0,0,1) 100%);
+}  
+.login{  
+        width: 382px;  
+        overflow: hidden;  
+        margin: auto;  
+        margin: 20 0 0 450px;  
+        padding: 80px;  
+        background: #717e80;  
+        border-radius: 15px ;
+        box-shadow: 10px 20px #888888;
+          
+}  
+h1{  
+    text-align: center;  
+    color: #ffffff;  
+    padding: 20px;  
+    font-family: Verdana , Sans-serif;
+}  
+label{  
+    color: #08ffd1;  
+    font-size: 17px;  
+}  
+#Uname{  
+    width: 300px;  
+    height: 30px;  
+    border: 2;  
+    border-radius: 3px;  
+    padding-left: 8px;  
+}  
+#Pass{  
+    width: 300px;  
+    height: 30px;  
+    border: 2;  
+    border-radius: 3px;  
+    padding-left: 8px;  
+      
+}  
+#log{  
+    width: 300px;  
+    height: 30px;  
+    border: none;  
+    border-radius: 17px;  
+    padding-left: 7px;  
+    color: #05aba8;
+  
+  
+}
+
+#studenttable{  
+    width: 300px;  
+    height: 30px;  
+    border: none;  
+    border-radius: 17px;  
+    padding-left: 7px;  
+    color: #05aba8;
+    margin-left: auto;
+    margin-right: auto;
+    table-layout: fixed
+
+  
+  
+}
+#delete_button{  
+    width: 100px;  
+    height: 30px;  
+    border: none;  
+    border-radius: 10px;  
+    padding-left: 7px;  
+    color: #05aba8;
+    margin:0 auto;
+    display:block;
+    left:50%;
+    position: absolute;
+    bottom: 25px;
+
+  
+  
+}
+
+th{
+  background: #717e80;  
+}
+
+#input_val{ 
+    display: flex;
+  align-items: center;
+  justify-content: center;
+  
+}
+#log:hover {
+  background-color: #fcba03;
+}
+
+#Uname:hover {
+  border-color: #fcba03;
+}
+#Pass:hover {
+  border-color: #fcba03;
+}

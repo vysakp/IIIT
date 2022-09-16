@@ -1,0 +1,66 @@
+body  
+{  
+    margin: 0;  
+    padding: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    background: rgb(100,101,101);
+    background: linear-gradient(90deg, rgba(100,101,101,1) 0%, rgba(0,0,0,1) 100%);
+}  
+
+#div1, #div2 {
+  float: left;
+  width: 200px;
+  height: 350px;
+  margin: 10px;
+  padding: 10px;
+  border: 1px solid white;
+}
+
+#div1, #div2 #div3 {    
+    display: inline;
+}
+#team_mem{
+  text-align: center;
+}
+h3 {
+  width: 50px;
+  padding: 10px;
+  color: #08ffd1;  
+  border: 5px solid gray;
+  margin: 0;
+}
+h1{  
+    text-align: center;  
+    color: #ffffff;  
+    padding: 20px;  
+    font-family: Verdana , Sans-serif;
+} 
+h2{  
+    text-align: center;  
+    color: #ffffff;  
+    padding: 20px;  
+    font-family: Verdana , Sans-serif;
+} 
+label{  
+    color: #08ffd1;  
+    font-size: 17px;  
+    display: table-cell; 
+}  
+form  { display: table;      }
+p     { display: table-row;  }
+input { display: table-cell; }
+
+#submit_button{  
+    width: 100px;  
+    height: 30px;  
+    border: none;  
+    border-radius: 10px;  
+    padding-left: 7px;  
+    color: #05aba8;
+    margin:0 auto;
+    display:block;
+    left:50%;
+    position: absolute;
+    bottom: 25px;
+  
+}

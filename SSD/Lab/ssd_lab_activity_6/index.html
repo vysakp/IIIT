@@ -1,0 +1,64 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<link rel="stylesheet" href="./style.css">
+<script src="./script.js"></script>
+</head>
+<body>
+  
+  <h1>Team Form</h1>
+  
+    <p>
+  <label for="Manager"> Manager name </label>
+  <input type="text" id="mname" name="mname"><br><br>
+    </p><p>
+  <label for="Group Email"> Group Email</label>
+  <input type="text" id="email" name="email" onkeyup="ValidateEmail();"/>
+  <span id="lblError" style="color: red"></span>
+  <br><br>
+    </p><p>
+  <label for="Server username" > Server username</label>
+  <input type="text" id="suname" name="suname" onkeyup="Validateuser();">
+  <span id="uError" style="color: red"></span>
+  <br><br>
+    </p><p>
+  <label for="Server password">Server password</label>
+  <input type="password" id="spass" name="spass" onkeyup="check();"><br><br>
+    </p><p>
+  <label for="Confirm password">Confirm password</label>
+  <input type="password" id="cpass" name="cpass" onkeyup="check();">
+  <span id="message"></span><br><br>
+    </p><p>
+  <label for="Team Lead">Team Lead:</label>
+  <select id="tlead" name="tlead">
+    <option value="Tony">Tony</option>
+    <option value="Michael">Michael</option>
+    <option value="John">John</option>
+    <option value="Mia">Mia</option>
+  </select><br><br>
+    </p>
+<div id="team_mem">
+<h2>Team members</h2>
+      
+<div id="div1" ondrop="drop(event)" ondragover="allowDrop(event)">
+  <div id="dragtext">
+    <h3 draggable="true" ondragstart="drag(event)" id="dragtext1">Tony</h3>
+    <h3 draggable="true" ondragstart="drag(event)" id="dragtext2">Tina</h3>
+    <h3 draggable="true" ondragstart="drag(event)" id="dragtext3">Thor</h3>
+    <h3 draggable="true" ondragstart="drag(event)" id="dragtext4">Mia</h3>
+    <h3 draggable="true" ondragstart="drag(event)" id="dragtext5">Sabre</h3>
+    <h3 draggable="true" ondragstart="drag(event)" id="dragtext6">Dony</h3>
+  </div>
+</div>
+</div>
+
+<div id="div2" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+  <div id="div3" >
+  <p> 
+  <input type="submit" id="submit_button">
+  </p>
+  </div>
+
+</body>
+</html>
+

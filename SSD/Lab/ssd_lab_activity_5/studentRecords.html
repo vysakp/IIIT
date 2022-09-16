@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+  <script language="javascript">  
+    function addRow(tableID) {  
+        var table = document.getElementById(tableID);  
+        var rowCount = table.rows.length;  
+        var row = table.insertRow(rowCount);  
+        //Column 1  
+        var sname = document.getElementById('Sname').value
+        var rno = document.getElementById('Rno').value
+        var cell1 = row.insertCell(0);  
+
+        //Column 2    
+        
+        var cell2 = row.insertCell(1);  
+        cell1.innerHTML = sname;
+        cell2.innerHTML = rno;    
+        
+        
+    }  
+    function removeRow(tableID) {  
+        try {
+            
+            var table = document.getElementById(tableID);  
+            var rowCount = table.rows.length;
+            
+            if (rowCount>1) {
+              rowCount--;
+              table.deleteRow(rowCount);
+            }
+            
+        }  
+        catch (e) {  
+            alert(e);  
+        }  
+    }  
+</script>  
+<head>
+   <title>Student Record</title>
+  <link rel="stylesheet" type="text/css" href="style.css"> 
+   </head>
+<body>  
+        <h1>Student Records</h1>
+      <div  id="input_val">
+        <label><b>Student Name </b> </label>
+        <input type="text" name="Sname" id="Sname" placeholder="Student Name" />
+        <label><b>&nbsp;Roll Number </b> </label>
+        <input type="text" name="Rno" id="Rno" placeholder="Roll Number" />
+        <p>&nbsp;</p>
+        <input type="button" value="Add New" onclick="addRow('studenttable')" />  
+    </div>
+  <br />
+        <table id="studenttable" width="350px" border="1">  
+             <tr> 
+               <th>Student Name</th>
+               <th>Roll No </th>
+             </tr> 
+
+        </table>  
+  <input type="button" name="delete" value="Delete"  id="delete_button" onclick="removeRow('studenttable')">
+</body> 
+</html>
