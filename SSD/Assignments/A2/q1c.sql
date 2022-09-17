@@ -18,7 +18,7 @@ BEGIN
     
 -- declaring the cursor 
     DECLARE emp CURSOR FOR SELECT EmpID, FirstName, LastName, Region, Gender, DateOfJoining FROM PERSON;
-  --  WHERE `Weight in Kgs.`<50; 
+
     DECLARE CONTINUE HANDLER FOR NOT FOUND SET finished = 1;
 
 

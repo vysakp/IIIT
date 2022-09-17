@@ -18,10 +18,10 @@ BEGIN
 
     
 -- Drop table if exists
-	DROP TABLE IF EXISTS PersonTransfer;
+	DROP TABLE IF EXISTS EmpBorn;
     
 
---  creating the hike table
+--  creating the EmpBorn table
 	CREATE TABLE EmpBorn (
     EBID INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
     Region VARCHAR(255),
@@ -76,6 +76,5 @@ END$$
 DELIMITER ;
 
 CALL Empborn(); 
--- SELECT * FROM EmpBorn;
 
 

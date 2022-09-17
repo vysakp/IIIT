@@ -1,4 +1,4 @@
--- Need to fix month and day name
+DROP PROCEDURE IF EXISTS  PJoining2022;
 DELIMITER $$
 CREATE PROCEDURE PJoining2022()
 BEGIN
@@ -16,9 +16,7 @@ BEGIN
     
 -- declaring the cursor 
     DECLARE emp CURSOR FOR SELECT EmpID, FirstName, LastName, DateOfBirth, DateOfJoining FROM PERSON;
-  --  WHERE `Weight in Kgs.`<50; 
     DECLARE CONTINUE HANDLER FOR NOT FOUND SET finished = 1;
-
 
     
 -- Drop table if exists

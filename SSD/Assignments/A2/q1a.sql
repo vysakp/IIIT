@@ -1,3 +1,4 @@
+DROP PROCEDURE IF EXISTS  set_hike2022;
 DELIMITER $$
 CREATE PROCEDURE set_hike2022()
 BEGIN
@@ -65,3 +66,9 @@ BEGIN
 	CLOSE emp;
 END$$
 DELIMITER ;
+
+CALL set_hike2022(); 
+SELECT * FROM hike2022;
+
+
+
