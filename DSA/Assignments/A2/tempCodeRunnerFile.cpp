@@ -1,5 +1,2 @@
-while(ptr){
-    //     cout<<ptr->val<<" ";
-    //     ptr=ptr->next;
-    // }
-    // return;
+int data_stuct;
+    // cin>>data_stuct;
