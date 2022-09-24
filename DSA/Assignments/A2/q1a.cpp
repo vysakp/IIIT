@@ -9,6 +9,7 @@ struct Node{
         Node *prev=NULL;
         Node *next=NULL;
     };
+
 class LRUCache {
     Node *head, *tail;
     int cur_cap;
@@ -74,7 +75,6 @@ public:
             head = cur_node;
         }
         else{
-            
             //Node not present
             if(cur_len<cur_cap){
                 //add new node 
@@ -131,6 +131,26 @@ public:
 
 int main(){
     
+    
+    int cap, q, opr, key, val;
+    cin>>cap>>q;
+    LRUCache cache(cap);
+    for(int i=0;i<q;i++){
+        cin>>opr;
+        if(opr==1){
+            //get operation
+            cin>>key;
+            cout<<cache.get(key)<<'\n';
+        }
+        else if(opr==2){
+            //set operation
+            cin>>key>>val;
+            cache.put(key,val);
+        }
+        else{
+            cout<<"Enter a valid operation";
+        }
+    }
     return 0;
 }
 

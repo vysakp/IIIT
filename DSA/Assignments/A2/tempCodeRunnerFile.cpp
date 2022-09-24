@@ -1,2 +1,2 @@
-int data_stuct;
-    // cin>>data_stuct;
+for(int i=0;i<n;i++)
+        cout<<popularity[i]<<" ";

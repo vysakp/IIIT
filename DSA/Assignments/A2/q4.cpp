@@ -20,6 +20,8 @@ class SMArray{
 
     void display();
 
+    void get_input();
+
     SMArray<T>  operator+( SMArray a);
     SMArray<T>  operator*( SMArray a);
 
@@ -110,8 +112,6 @@ void SMArray<T>::push_front(T vals[]){
 
         }
         
-        // else if(vals)
-
     }
 
     if(!added)
@@ -120,7 +120,7 @@ void SMArray<T>::push_front(T vals[]){
 
 template <class T>
 SMArray<T> SMArray<T>::operator+(SMArray a){
-
+    //checking invalid case
     SMArray<T> Res;
     Res.row = row;
     Res.col = col;
@@ -149,8 +149,6 @@ SMArray<T> SMArray<T>::operator+(SMArray a){
                 j++;
             }
             else {
-
-                //  cout<<k<<" ";
                 T new_val[3] = {a.matrix[0][j],a.matrix[1][j],a.matrix[2][j]+matrix[2][i]};
                 Res.push_back(new_val);
                 j++;
@@ -165,7 +163,6 @@ SMArray<T> SMArray<T>::operator+(SMArray a){
             Res.push_back(new_val);
             i++;
     }
-    // cout<<" "<<i<<" "<<j<<" "<<a.cur_size<<" "<<Res.cur_size<<'\n';
     while(j<a.cur_size){
          T new_val[3] = {a.matrix[0][j],a.matrix[1][j],a.matrix[2][j]};
         Res.push_back(new_val);
@@ -249,6 +246,23 @@ void SMArray<T>::display(){
     }
 }
 
+template <class T>
+void SMArray<T>::get_input(){
+    cin>>row>>col;
+    T ele;
+    for (int i = 0; i < row; i++)
+        for (int j = 0; j < col; j++){
+            cin>>ele;
+            if (ele != 0){
+                T new_ele[3];
+                new_ele[0] = i;
+                new_ele[1] = j;
+                new_ele[2] = ele;
+                push_back(new_ele);
+            }
+        }
+}
+
 
 //Likedlist sparse matrix
 
@@ -286,6 +300,8 @@ class SMLinkedList{
     // void push_front( T vals[3]);
 
     void display();
+
+    void get_input();
 
     SMLinkedList<T>  operator+( SMLinkedList a);
 
@@ -337,9 +353,6 @@ void SMLinkedList<T>::push_front(T vals[3]){
                 new_node->next = head;
                 head = new_node;
             }
-            // prev = ptr->next;
-            // ptr->next = new_node;
-            // new_node->next = prev;
             added = true;
             break;
         }
@@ -377,7 +390,6 @@ SMLinkedList<T> SMLinkedList<T>::transpose(){
     for(int i=0;i<col;i++){
         Node<T>* ptr = head;
         while(ptr){
-            // cout<<ptr->val<<" ";
             if(ptr->c==i){
                 T new_val[3] = {ptr->c,ptr->r,ptr->val};
                 Res.push_back(new_val);
@@ -423,7 +435,6 @@ SMLinkedList<T> SMLinkedList<T>::operator+(SMLinkedList a){
             }
             else{
                 T new_val[3] = {ptr2->r,ptr2->c,ptr2->val+ptr1->val};
-                // cout<<new_val[0]<<" "<<new_val[1]<<" "<<new_val[2]<<" "<<'\n';
                 Res.push_back(new_val);
                 ptr1 = ptr1->next;
                 ptr2 = ptr2->next;
@@ -459,10 +470,7 @@ SMLinkedList<T> SMLinkedList<T>::operator*(SMLinkedList a){
     while(ptr1){
         ptr2 = a.head;
         while(ptr2){
-
-            // cout<<ptr2->c<<'\n';
             if(ptr1->c==ptr2->c){
-                // cout<<ptr2->r<<" "<<ptr2->c<<" "<<ptr2->val<<'\n';
                 T new_val[3] = {ptr1->r,ptr2->r,ptr1->val*ptr2->val};
                 Res.push_back(new_val);
             }
@@ -470,9 +478,6 @@ SMLinkedList<T> SMLinkedList<T>::operator*(SMLinkedList a){
         }
         ptr1 = ptr1->next;
     }
-   
-    // Res.row = row;
-    // Res.col = col;
     SMLinkedList<T> FRes;
     FRes.row = row;
     FRes.col = a.row; //since we did a transpose;
@@ -483,140 +488,96 @@ SMLinkedList<T> SMLinkedList<T>::operator*(SMLinkedList a){
         FRes.push_front(new_val);
         ptr = ptr->next;
     }
-    // Node<T>* ptr3 = FRes.head;
-    // while(ptr3){
-    //     cout<<ptr3->r<<" "<<ptr3->c<<" "<<ptr3->val<<" "<<'\n';
-    //     ptr3=ptr3->next;
-    // }
-    // cout<<"\n";
-    // cout<<FRes.row<<" "<<FRes.col;
 
     return FRes;
 }
 
 
+template <class T>
+void SMLinkedList<T>::get_input(){
+    cin>>row>>col;
+    T ele;
+    for (int i = 0; i < row; i++)
+        for (int j = 0; j < col; j++){
+            cin>>ele;
+            if (ele != 0){
+                T new_ele[3];
+                new_ele[0] = i;
+                new_ele[1] = j;
+                new_ele[2] = ele;
+                push_back(new_ele);
+            }
+        }
+}
 
 int main(){
 
-    // int data_struct;
-    // int opertn;
-    // cin>>data_struct;
+    int data_struct;
+    int opern;
+    cin>>data_struct;
 
 
-    // if(data_struct==1){
-    //     SMArray<int> SM1,SM2;
-    //     int ele;
-    //     cin>>opertn;
-    //     switch (opertn)
-    //     {
-    //     case 1:
-    //         cin>>SM1.row>>SM1.col;
-    //         cin>>ele;
-
-    //         break;
-    //     case 2:
-    //         break;
-    //     case 3:
-    //         break;
-    //     default:
-    //         break;
-    //     }
-
-    // }
-    // else if(data_struct==2){
-    //     SMLinkedList<int> SM1, SM2;
-    //     cin>>opertn;
-    //     switch (opertn)
-    //     {
-    //     case 1:
-    //         break;
-    //     case 2:
-    //         break;
-    //     case 3:
-    //         break;
-    //     default:
-    //         break;
-    //     }
-
-    // }
-    // else{
-    //     cout<<"Enter a valid choice";
-    // }
-
-    
-
-    SMLinkedList<float> SM1, SM2;
-
-    int r1,c1;
-    int r2,c2;
-    float ele;
-    r1 = 4;
-    c1 = 10;
-    float arr1[] = {5.5, 5, 7.8, 8, 9, 6, 3, 6, 8, 0, 5, 3, 4, 6, 7, 8, 0, 8, 5, 3, 1, 4, 6, 7, 9, 0, 7, 5, 0, 4, 7, 9, 9, 7, 6, 4, 6, 7, 4, 3};
-    float arr2[] = {0, 0, 0, 5.5, 7, 9, 3.6, 4, 2, 1, 7.8, 8, 3, 2, 6, 2, 4, 5, 6, 7, 8, 9, 7, 4, 5, 2, 4, 3, 5, 0, 0, 2, 0, 3, 0, 0, 0, 1, 1, 0, 5, 6, 3, 2, 0, 0, 3, 0, 3, 1};
-    SM1.row = r1;
-    SM1.col = c1;
-    int k=0;
-    for (int i = 0; i < r1; i++)
-        for (int j = 0; j < c1; j++){
-            // cin>>ele;
-            ele = arr1[k++];
-            if (ele != 0){
-                float new_ele[3];
-                new_ele[0] = i;
-                new_ele[1] = j;
-                new_ele[2] = ele;
-                SM1.push_back(new_ele);
-            }
+    if(data_struct==1){
+        SMArray<int> SM1,SM2,SMRes;
+        cin>>opern;
+        switch (opern)
+        {
+        case 1:
+            //Addition
+            SM1.get_input();
+            SM2.get_input();
+            SMRes = SM1+SM2;
+            SMRes.display();
+            break;
+        case 2:
+            //Transpose
+            SM1.get_input();
+            SMRes = SM1.transpose();
+            SMRes.display();
+            break;
+        case 3:
+            SM1.get_input();
+            SM2.get_input();
+            SMRes = SM1*SM2;
+            SMRes.display();
+            break;
+        default:
+            cout<<"Enter a valid choice";
         }
-    r2=10;
-    c2=5;
-    SM2.row = r2;
-    SM2.col = c2;
 
-    // int m2[2][2] = {{2,1}, {1,0}};
-    int l=0;
-    for (int i = 0; i < r2; i++)
-        for (int j = 0; j < c2; j++){
-            // cin>>ele;
-            ele = arr2[l++];
+    }
+    else if(data_struct==2){
+        SMLinkedList<int> SM1, SM2, SMRes;
 
-            if (ele != 0){
-                float new_ele[3];
-                new_ele[0] = i;
-                new_ele[1] = j;
-                new_ele[2] = ele;
-
-                SM2.push_back(new_ele);
-            }
+        cin>>opern;
+        switch (opern)
+        {
+        case 1:
+            //Addition
+            SM1.get_input();
+            SM2.get_input();
+            SMRes = SM1+SM2;
+            SMRes.display();
+            break;
+        case 2:
+            //Transpose
+            SM1.get_input();
+            SMRes = SM1.transpose();
+            SMRes.display();
+            break;
+        case 3:
+            SM1.get_input();
+            SM2.get_input();
+            SMRes = SM1*SM2;
+            SMRes.display();
+            break;
+        default:
+            cout<<"Enter a valid choice";
         }
-    // SM2.display();
-    SMLinkedList<float> SMRes = SM1*SM2;
-
-    // SM1 = SM1.transpose();
-    SMRes.display();
-
-    
-    // cin>>r2>>c2;
-    // SM2.row = r2;
-    // SM2.col = c2;
-    // for (int i = 0; i < r2; i++)
-    //     for (int j = 0; j < c2; j++){
-    //         cin>>ele;
-    //         if (ele != 0){
-    //             float new_ele[3];
-    //             new_ele[0] = i;
-    //             new_ele[1] = j;
-    //             new_ele[2] = ele;
-    //             SM2.push_back(new_ele);
-    //         }}
-
-    
-    // SMArray<float> SMres = SM1*SM2;
-
-
-    // SM1.display();
-
+    }
+    else{
+        cout<<"Enter a valid choice";
+    }
     return 0;
 
 

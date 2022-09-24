@@ -39,7 +39,7 @@ class LFUCache {
     unordered_map<int,Node*> node_hmap;
     //storing head and tail
     unordered_map<int,List*> freq_hmap;
-public:
+    public:
     LFUCache(int capacity) {
         cur_cap=capacity;
         cur_least_freq=1; 
@@ -65,32 +65,28 @@ public:
          f_list->len--;
 
     }
-
-    void update_freq_hmap(Node* node){
-        node_hmap.erase(node->key);
-        remove(node, freq_hmap[node->freq]);
-        if(freq_hmap[node->freq]->len==0 && node->freq==cur_least_freq)
-            cur_least_freq++;
-
-        List* new_list = new List();
-        node->freq++;
-        if(freq_hmap.find(node->freq)!=freq_hmap.end())
-            new_list=freq_hmap[node->freq];
-        // else 
-        //     freq_hmap[cur_least_freq] = new_list;
-        insert(node, new_list);
-        freq_hmap[node->freq] = new_list;
-        node_hmap[node->key] = node;
-
-
-    }
     
     int get(int key){
         if(node_hmap.find(key)!=node_hmap.end()){
             //Node present in the cache
             Node *cur_node = node_hmap[key];
             int val = cur_node->val;
-            update_freq_hmap(cur_node);
+
+            node_hmap.erase(cur_node->key);
+            remove(cur_node, freq_hmap[cur_node->freq]);
+            if(freq_hmap[cur_node->freq]->len==0 && cur_node->freq==cur_least_freq)
+                cur_least_freq++;
+
+            List* new_list = new List();
+            cur_node->freq++;
+            if(freq_hmap.find(cur_node->freq)!=freq_hmap.end())
+                new_list=freq_hmap[cur_node->freq];
+            // else 
+            //     freq_hmap[cur_least_freq] = new_list;
+            insert(cur_node, new_list);
+            freq_hmap[cur_node->freq] = new_list;
+            node_hmap[cur_node->key] = cur_node;
+
             return val;
         }
         else
@@ -103,7 +99,18 @@ public:
             //Node present in the cache
             Node *cur_node = node_hmap[key];
             cur_node->val = value;
-            update_freq_hmap(cur_node);
+            node_hmap.erase(cur_node->key);
+            remove(cur_node, freq_hmap[cur_node->freq]);
+            if(freq_hmap[cur_node->freq]->len==0 && cur_node->freq==cur_least_freq)
+                cur_least_freq++;
+
+            List* new_list = new List();
+            cur_node->freq++;
+            if(freq_hmap.find(cur_node->freq)!=freq_hmap.end())
+                new_list=freq_hmap[cur_node->freq];
+            insert(cur_node, new_list);
+            freq_hmap[cur_node->freq] = new_list;
+            node_hmap[cur_node->key] = cur_node;
         }
         else{
             if (cur_cap==0)
@@ -130,14 +137,24 @@ public:
 };
 
 int main(){
-    LFUCache obj(3);
-    string input[]= {"put","put","get","get","get","put","put","get","get","get","get"};
-    vector<vector<int>> input_val{{2,2},{1,1},{2},{1},{2},{3,3},{4,4},{3},{2},{1},{4}};
-    for(int i=0 ;i<input_val.size();i++){
-        if(input_val[i].size()==1)
-            obj.get(input_val[i][0]);
-        else
-            obj.put(input_val[i][0],input_val[i][1]);
+    int cap, q, opr, key, val;
+    cin>>cap>>q;
+    LFUCache cache(cap);
+    for(int i=0;i<q;i++){
+        cin>>opr;
+        if(opr==1){
+            //get operation
+            cin>>key;
+            cout<<cache.get(key)<<'\n';
+        }
+        else if(opr==2){
+            //set operation
+            cin>>key>>val;
+            cache.put(key,val);
+        }
+        else{
+            cout<<"Enter a valid operation";
+        }
     }
     return 0;
 }
